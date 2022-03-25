@@ -12,7 +12,10 @@ jobs:
         with:
           ref: master
       - name: Run update script
-        run: ./scripts/update_all_data.sh
+        run: |
+          chmod +x ./scripts/update_all_data.sh
+          ./scripts/update_all_data.sh
+          chmod -x ./scripts/update_all_data.sh
       - name: Create or update pull request
         uses: peter-evans/create-pull-request@v3
         with:
