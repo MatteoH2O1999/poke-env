@@ -27,3 +27,4 @@ jobs:
             Automated data update by [update-data.yml](https://github.com/hsahovic/poke-env/tree/master/.github/workflows/update-data.yml)
           assignees: MatteoH2O1999
           reviewers: MatteoH2O1999
+          author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
