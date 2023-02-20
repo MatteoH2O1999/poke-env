@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# pyre-ignore-all-errors[34]
 """This module defines a player class with the OpenAI API on the main thread.
 For a black-box implementation consider using the module env_player.
 """
+# pyre-ignore-all-errors[34]
 import asyncio
 import copy
 import numpy as np  # pyre-ignore
@@ -714,6 +714,9 @@ class OpenAIGymEnv(Env, ABC, metaclass=_OpenAIGymEnvMetaclass):  # pyre-ignore
         """
         return self.agent.websocket_url
 
+    def __getattr__(self, item):  # pragma: no cover
+        return getattr(self.agent, item)
+
 
 class LegacyOpenAIGymEnv(OpenAIGymEnv, ABC):
     """
@@ -743,7 +746,49 @@ class LegacyOpenAIGymEnv(OpenAIGymEnv, ABC):
         return obs, reward, terminated or truncated, info
 
 
-def wrap_for_old_gym_api(env: OpenAIGymEnv) -> OpenAIGymEnv:
+class _Wrapper(LegacyOpenAIGymEnv):
+    def __init__(self, environment: OpenAIGymEnv):  # noqa
+        self._wrapped: OpenAIGymEnv = environment
+        self.step = LegacyOpenAIGymEnv.step.__get__(  # noqa
+            self._wrapped, self._wrapped.__class__
+        )
+        self.reset = LegacyOpenAIGymEnv.reset.__get__(  # noqa
+            self._wrapped, self._wrapped.__class__
+        )
+        self._instantiated = True
+
+    def calc_reward(
+        self, last_battle: AbstractBattle, current_battle: AbstractBattle
+    ) -> float:
+        return self._wrapped.calc_reward(last_battle, current_battle)
+
+    def action_to_move(self, action: int, battle: AbstractBattle) -> BattleOrder:
+        return self._wrapped.action_to_move(action, battle)
+
+    def embed_battle(self, battle: AbstractBattle) -> ObservationType:
+        return self._wrapped.embed_battle(battle)
+
+    def describe_embedding(self) -> Space:
+        return self._wrapped.describe_embedding()
+
+    def action_space_size(self) -> int:
+        return self._wrapped.action_space_size()
+
+    def get_opponent(self) -> Union[Player, str, List[Player], List[str]]:
+        return self._wrapped.get_opponent()
+
+    def __getattr__(self, item):
+        if item == "_instantiated":
+            return False
+        return getattr(self._wrapped, item)
+
+    def __setattr__(self, key, value):
+        if not self._instantiated:
+            return super().__setattr__(key, value)
+        return setattr(self._wrapped, key, value)
+
+
+def wrap_for_old_gym_api(env: OpenAIGymEnv) -> LegacyOpenAIGymEnv:
     """
     Wraps an OpenAIGymEnv in order to support the old gym API.
 
@@ -753,7 +798,4 @@ def wrap_for_old_gym_api(env: OpenAIGymEnv) -> OpenAIGymEnv:
     :return: The wrapped environment
     :rtype: OpenAIGymEnv
     """
-    env = copy.copy(env)
-    env.reset = LegacyOpenAIGymEnv.reset.__get__(env, env.__class__)  # pyre-ignore
-    env.step = LegacyOpenAIGymEnv.step.__get__(env, env.__class__)  # pyre-ignore
-    return env
+    return _Wrapper(env)

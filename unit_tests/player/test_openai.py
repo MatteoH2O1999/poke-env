@@ -147,3 +147,8 @@ def test_legacy_wrapper():
     assert dummy.step.__func__ is OpenAIGymEnv.step
     assert wrapped.reset.__func__ is LegacyOpenAIGymEnv.reset
     assert wrapped.step.__func__ is LegacyOpenAIGymEnv.step
+    assert id(dummy._keep_challenging) == id(wrapped._keep_challenging)
+    wrapped._keep_challenging = True
+    assert id(dummy._keep_challenging) == id(wrapped._keep_challenging)
+    dummy._keep_challenging = False
+    assert id(dummy._keep_challenging) == id(wrapped._keep_challenging)
